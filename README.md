@@ -91,7 +91,7 @@ This tool is released under the Apache 2.0 license. See the LICENSE file in this
 
 # Built With
 
-* [nVidia NVCC](https://docs.nvidia.com/cuda/cuda-programming-guide/)
+* [C++20](https://en.wikipedia.org/wiki/C%2B%2B)
 
 ## Author
 
