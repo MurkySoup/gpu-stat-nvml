@@ -91,7 +91,7 @@ This tool is released under the Apache 2.0 license. See the LICENSE file in this
 
 # Built With
 
-* [Python](https://www.python.org) designed by Guido van Rossum
+* [nVidia NVCC](https://docs.nvidia.com/cuda/cuda-programming-guide/)
 
 ## Author
 
