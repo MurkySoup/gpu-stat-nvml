@@ -1,6 +1,23 @@
+# gpustat
+
 # gpu-stat-nvml
 
-A small Linux command-line NVIDIA GPU telemetry utility using NVML
+A lightweight Linux NVIDIA GPU telemetry CLI using the NVIDIA Management Library (NVML). This implementation is C++20 and does not require NVCC or the CUDA Runtime.
+
+---
+
+## Features
+
+- NVIDIA driver version.
+- Enumerates visible NVIDIA GPUs and reports device names.
+- Per-GPU GPU utilization and framebuffer memory use.
+- Per-GPU GPU die temperature.
+- Per-GPU board power draw.
+- Per-physical-fan speed percentage.
+- Aggregate utilization and memory utilization.
+- Aggregate temperature average, minimum, and maximum.
+- Aggregate board power total and average per reporting GPU.
+- Aggregate fan percentage average, minimum, and maximum.
 
 ---
 
@@ -34,36 +51,57 @@ Run:
 gpustat
 ```
 
-Example output:
+Example output
 
 ```text
 NVIDIA Driver: 580.178.04
 GPU 0: GeForce RTX 3060
   Utilization: 25%
   Memory: 4096 / 12288 MiB (33.3%)
-Aggregate (1 GPUs):
-  Utilization: 25.0%
-  Memory: 4096 / 12288 MiB (33.3%)
+  Temperature: 55 C
+  Power: 85.5 W
+  Fan 0: 35%
+  Fan 1: 40%
+GPU 1: GeForce RTX 3060
+  Utilization: 75%
+  Memory: 8192 / 12288 MiB (66.7%)
+  Temperature: 64 C
+  Power: 112.0 W
+  Fan 0: 55%
+Aggregate (2 GPUs):
+  Utilization: 50.0%
+  Memory: 12288 / 24576 MiB (50.0%)
+  Temperature: 59.5 C average (55 C min, 64 C max)
+  Power: 197.5 W total (98.8 W average/GPU)
+  Fan speed: 46.3% average/GPU (35% min, 55% max)
 ```
 
-## Semantics
+## Metric semantics and caveats
 
-- Memory is reported in MiB (1 MiB = 1,048,576 bytes), not decimal MB.
-- Per-GPU utilization is NVML's `utilization.gpu` sample.
-- Aggregate GPU utilization is the unweighted arithmetic mean of per-GPU utilization percentages. Each GPU contributes equally.
-- Aggregate memory utilization is sum(memory used) / sum(memory total).
-- NVML utilization is a sampled driver metric, not a process-level attribution. A single snapshot is not a guarantee of instantaneous utilization.
-- The utility reports NVML errors rather than silently substituting zero. Unsupported telemetry or driver communication failures therefore produce a non-zero exit status and a diagnostic on stderr.
+- Memory is reported in MiB (1 MiB = 1,048,576 bytes).
+- GPU utilization is NVML's sampled `utilization.gpu` percentage. Aggregate utilization is the unweighted arithmetic mean across enumerated GPUs.
+- Memory aggregate is sum(used) / sum(total).
+- Temperature is the GPU die temperature in whole degrees Celsius, using `nvmlDeviceGetTemperatureV`.
+- Aggregate temperature is the arithmetic mean of available GPU readings; minimum and maximum are over available GPU readings.
+- Power is returned by `nvmlDeviceGetPowerUsage` in milliwatts and displayed in watts. It represents GPU board power and associated circuitry, not whole-system wall power. On Ampere (except GA100) and newer GPUs, NVML documents this value as averaged over a one-second interval; behavior varies by architecture.
+- Aggregate power is the sum of available GPU readings; the average is the arithmetic mean across GPUs with a power reading.
+- Fan speed is reported per physical fan using `nvmlDeviceGetFanSpeed_v2`. NVML describes this as intended operating speed, expressed as a percentage of the product's maximum noise-tolerance fan speed; it can exceed 100%. It is not an RPM measurement and may not reveal a mechanically stalled fan.
+- Per-GPU fan data lists every fan that successfully reports. Aggregate fan average first averages fans within each GPU, then averages those GPU means equally. Min/max are over all individual fan readings. This prevents GPUs with more fans from receiving more weight in the aggregate mean.
+- Unsupported optional telemetry is shown as `N/A` and excluded from aggregation. Unexpected NVML errors fail the snapshot with a diagnostic instead of silently substituting zero.
+- Values are a sequential snapshot, not an atomic synchronized measurement. NVML queries occur one after another; workload and power can change between readings.
 
 ## Tests
 
 Install GoogleTest, then configure and build with `-DGPUSTAT_BUILD_TESTS=ON`. CTest runs the aggregation and formatting tests. The tests do not require an NVIDIA GPU because they exercise pure reporting logic.
 
-## Operational considerations
+## Operational design
 
-This implementation performs one sequential enumeration and a small fixed set of NVML queries per device. It does not poll continuously. Repeated invocation frequency is controlled by the caller. Avoid tight polling loops; for a basic status command, one snapshot per invocation is sufficient.
-
-NVML initialization and shutdown are paired using object lifetime. Device handles are borrowed NVML handles and are not independently freed. No raw device allocations, streams, events, or CUDA contexts are created.
+- No CUDA context, kernels, streams, device allocations, or device-host copies.
+- No background thread or polling loop.
+- One sequential set of NVML queries per device per invocation.
+- RAII-style NVML initialization/shutdown ownership.
+- Device handles are borrowed NVML handles; no per-handle deallocation.
+- The program only reads telemetry. It never changes fan policy, clocks, power limits, persistence mode, or other device configuration.
 
 ## Suggested validation
 

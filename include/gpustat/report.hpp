@@ -6,10 +6,10 @@
 
 namespace gpustat {
 
-/** Calculate aggregate utilization and memory statistics. */
+/** Calculate aggregate statistics; throws if no GPUs are present. */
 [[nodiscard]] AggregateStats calculate_aggregates(const SystemStats& stats);
 
-/** Print a concise human-readable report. */
+/** Print a human-readable report. */
 void print_report(const SystemStats& stats, std::ostream& output);
 
 }  // namespace gpustat
