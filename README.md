@@ -1,5 +1,3 @@
-# gpustat
-
 # gpu-stat-nvml
 
 A lightweight Linux NVIDIA GPU telemetry CLI using the NVIDIA Management Library (NVML). This implementation is C++20 and does not require NVCC or the CUDA Runtime.
