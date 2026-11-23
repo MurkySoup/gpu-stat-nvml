@@ -5,10 +5,10 @@
 namespace gpustat {
 
 /**
- * Collects a single, sequential NVML telemetry snapshot.
+ * Collects one sequential NVML telemetry snapshot.
  *
- * NVML is initialized for the lifetime of the monitor. This class is
- * intentionally non-copyable and non-movable to keep NVML ownership simple.
+ * NVML is initialized for the monitor's lifetime. NVML device handles are
+ * borrowed handles and are not independently released.
  */
 class NvmlMonitor final {
 public:
@@ -20,7 +20,7 @@ public:
     NvmlMonitor(NvmlMonitor&&) = delete;
     NvmlMonitor& operator=(NvmlMonitor&&) = delete;
 
-    /** Query driver version and telemetry for every detected NVIDIA GPU. */
+    /** Query driver version and telemetry for every enumerated NVIDIA GPU. */
     [[nodiscard]] SystemStats collect() const;
 
 private:
